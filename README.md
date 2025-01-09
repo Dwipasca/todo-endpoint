@@ -64,23 +64,16 @@ This is simple todo list endpoint that I created with go language
 - Method: `GET`
 - response
   ```json
-  {
-    "code": 200,
-    "status": "Success",
-    "message": "Success get list notes",
-    "data": [
-      {
-        "id": 1,
-        "title": "golang",
-        "body": "bahasa golang dari google"
-      },
-      {
-        "id": 2,
-        "title": "js",
-        "body": "javascript beda dari java"
-      }
-    ]
-  }
+  [
+    {
+      "id": 1,
+      "task": "Buy new macbook"
+    },
+    {
+      "id": 2,
+      "task": "Buy new chair"
+    }
+  ]
   ```
 
 ## Detail Todo
