@@ -1,3 +1,5 @@
+// models for define struct and contract/interface
+// or we can define a new type data
 package models
 
 type Todo struct {
@@ -8,6 +10,6 @@ type Todo struct {
 type Response struct {
 	Status  string `json:"status"`
 	Code    int    `json:"code"`
-	Task    string `json:"task"`
+	Task    interface{} `json:"data,omitempty"` // omitempty -> datanya tidak tampil jika value = nil
 	Message string `json:"message"`
 }

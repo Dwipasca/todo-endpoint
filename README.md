@@ -6,7 +6,7 @@ This is simple todo list endpoint that I created with go language
 
 ## Create Todo
 
-- URL : `localhost:8000/api/v1/todo`
+- URL : `http://localhost:8080/api/v1/todos`
 - Method: `POST`
 - request body
   ```json
@@ -19,14 +19,13 @@ This is simple todo list endpoint that I created with go language
   {
     "status": "success",
     "code": 201,
-    "task": "Buy new macbook",
     "message": "Successfully created new todo"
   }
   ```
 
 ## Update Todo
 
-- URL : `localhost:8000/api/v1/todo/update/`
+- URL : `http://localhost:8080/api/v1/todos?id={id}`
 - Method: `PUT`
 - request body
   ```json
@@ -39,53 +38,60 @@ This is simple todo list endpoint that I created with go language
   {
     "status": "success",
     "code": 200,
-    "task": "buy new chair",
-    "message": "Successfully updated todo"
+    "message": "Successfully update todo"
   }
   ```
 
 ## Delete Todo
 
-- URL : `localhost:8000/api/v1/todo/delete/`
+- URL : `http://localhost:8080/api/v1/todos?id={id}`
 - Method: `DELETE`
 - response
   ```json
   {
     "status": "success",
     "code": 200,
-    "task": "",
     "message": "Successfully deleted todo"
   }
   ```
 
 ## List Todo
 
-- URL : `localhost:8000/api/v1/todos`
-- Method: `GET`
-- response
-  ```json
-  [
-    {
-      "id": 1,
-      "task": "Buy new macbook"
-    },
-    {
-      "id": 2,
-      "task": "Buy new chair"
-    }
-  ]
-  ```
-
-## Detail Todo
-
-- URL : `localhost:8000/api/v1/todo/detail/`
+- URL : `http://localhost:8080/api/v1/todos`
 - Method: `GET`
 - response
   ```json
   {
     "status": "success",
     "code": 200,
-    "task": "Buy new macbook",
+    "data": [
+      {
+        "id": 2,
+        "task": "Buy new macbook"
+      },
+      {
+        "id": 3,
+        "task": "Buy new macbook"
+      }
+    ],
+    "message": "List todo retrieved successfully"
+  }
+  `
+  ```
+
+## Detail Todo
+
+- URL : `http://localhost:8080/api/v1/todos/detail/{id}`
+- Method: `GET`
+- response
+  ```json
+  {
+    "status": "success",
+    "code": 200,
+    "data": {
+      "id": 3,
+      "task": "Buy new macbook"
+    },
     "message": "Todo retrieved successfully"
   }
   ```

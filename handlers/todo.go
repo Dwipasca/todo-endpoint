@@ -14,15 +14,15 @@ var (
 	nextID  = 1
 )
 
-func write(w http.ResponseWriter, status string, code int, task string, message string) {
+func write(w http.ResponseWriter, status string, code int, data interface{}, message string) {
 	var req = models.Response{
 		Status:  status,
 		Code:    code,
-		Task:    task,
+		Task:    data,
 		Message: message,
 	}
 
-	res, _ := json.Marshal(req)
+	res, _ := json.Marshal(req) // convert byte to json
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(res)
@@ -36,93 +36,84 @@ func remove(slice []models.Todo, s int) []models.Todo {
 }
 
 func AddTodo(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost { // if the method is POST
-		var newTodo models.Todo
-		if err := json.NewDecoder(r.Body).Decode(&newTodo);
-		err != nil {
-			write(w, "error", http.StatusBadRequest,"", "Invalid input")
-			return
-		}
 
-		// sync.Mutex (lock and unlock) used to avoid race condition
-		todoMux.Lock()
-		newTodo.ID = nextID
-		nextID++;
-		todos = append(todos, newTodo)
-		todoMux.Unlock()
-
-		write(w, "success", http.StatusCreated, newTodo.Task, "Successfully created new todo")
-	} else {
-		write(w, "error", http.StatusMethodNotAllowed,"", "Method is not allowed")
+	if r.Method != http.MethodPost {
+		write(w, "error", http.StatusMethodNotAllowed, nil, "Method is not allowed")
+		return
 	}
+
+	var newTodo models.Todo
+
+	if err := json.NewDecoder(r.Body).Decode(&newTodo);
+	err != nil {
+		write(w, "error", http.StatusBadRequest, nil, "Invalid input")
+		return
+	}
+
+	// sync.Mutex (lock and unlock) used to avoid race condition
+	todoMux.Lock()
+	defer todoMux.Unlock()
+
+	newTodo.ID = nextID
+	nextID++;
+
+	todos = append(todos, newTodo)
+
+	write(w, "success", http.StatusCreated, nil, "Successfully created new todo")
+	
 }
 
 func UpdateTodo(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPut {
-		// menggunakan substring untuk menghapus semua strings selain dari teks yg ter-tera
-		idStr := r.URL.Path[len("/api/v1/todo/update/"):]
+	if r.Method != http.MethodPut {
+		write(w, "error", http.StatusMethodNotAllowed, nil, "Method not allowed")
+		return
+	}
 
-		id, err := strconv.Atoi(idStr) // convert from string to int
-		if err != nil {
-			write(w, "error", http.StatusBadRequest, "", "Id is not found")
-			return
-		}
+	idStr := r.URL.Query().Get("id")
 
-		var updateTodo models.Todo
-		// newDecoder => membuat decoder baru untuk membaca data yang ada di body request
-		// decoder => decode data json yg ada di r.Body kedalam var updateTodo yang pointernya ke object/struct Todo
-		if err := json.NewDecoder(r.Body).Decode(&updateTodo)
-		err != nil {
-			write(w, "error", http.StatusBadRequest,"", "invalid input")
-			return
-		}
+	id, err := strconv.Atoi(idStr) // convert from string to int
+	if err != nil {
+		write(w, "error", http.StatusBadRequest, nil, "Id is not found")
+		return
+	}
 
-		todoMux.Lock()
-		for i, todo := range todos {
-			if todo.ID == id {
-				todos[i].Task = updateTodo.Task
-				todoMux.Unlock()
-				write(w, "success", http.StatusOK, updateTodo.Task, "Successfully update todo")
+	var updateTodo models.Todo
+	// newDecoder => membuat decoder baru untuk membaca data yang ada di body request
+	// decoder => decode data json yg ada di r.Body kedalam var updateTodo yang pointernya ke object/struct Todo
+	if err := json.NewDecoder(r.Body).Decode(&updateTodo)
+	err != nil {
+		write(w, "error", http.StatusBadRequest, nil, "invalid input")
+		return
+	}
+
+	todoMux.Lock()
+	defer todoMux.Unlock()
+
+	for i, todo := range todos {
+		if todo.ID == id {
+
+			if todos[i].Task == updateTodo.Task{
+				write(w, "info", http.StatusOK, nil, "There is no change")
 				return
 			}
-		}
-		todoMux.Unlock()
 
-		write(w, "error", http.StatusNotFound, "", "todo not found")
-	} else {
-		write(w, "error", http.StatusMethodNotAllowed, "", "Method not allowed")
+			todos[i].Task = updateTodo.Task
+			write(w, "success", http.StatusOK, nil, "Successfully update todo")
+			return
+		}
 	}
+
+	write(w, "error", http.StatusNotFound, nil, "todo not found")
+	
 }
 
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodDelete {
-		idStr := r.URL.Path[len("/api/v1/todo/delete/"):]
-
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			write(w, "error", http.StatusBadRequest, "", "Invalid ID")
-			return
-		}
-
-		todoMux.Lock()
-		for i, todo := range todos {
-			if todo.ID == id {
-				todos = remove(todos, i)
-				todoMux.Unlock()
-				write(w, "success", http.StatusOK, "", "Successfully deleted todo")
-				return
-			}
-		}
-		todoMux.Unlock()
-
-		write(w, "error", http.StatusNotFound, "", "Todo not found")
-	} else {
-		write(w, "error", http.StatusMethodNotAllowed, "", "Method not allowed")
+	if r.Method != http.MethodDelete {
+		write(w, "error", http.StatusMethodNotAllowed, nil, "Method not allowed")
+		return
 	}
-}
-
-func DetailTodo(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Path[len("/api/v1/todo/detail/"):]
+	
+	idStr := r.URL.Query().Get("id")
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -131,28 +122,52 @@ func DetailTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	todoMux.Lock()
-	for _, todo := range todos {
+	defer todoMux.Unlock()
+
+	for i, todo := range todos {
 		if todo.ID == id {
-			todoMux.Unlock()
-			write(w, "success", http.StatusOK, todo.Task, "Todo retrieved successfully")
+			todos = remove(todos, i)
+			write(w, "success", http.StatusOK, nil, "Successfully deleted todo")
 			return
 		}
 	}
-	todoMux.Unlock()
+	
+	write(w, "error", http.StatusNotFound, nil, "Todo not found")
+	
+}
 
-	write(w, "error", http.StatusNotFound, "", "Todo not found")
+func DetailTodo(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodGet {
+		write(w, "error", http.StatusMethodNotAllowed, nil, "Method not allowed")
+		return
+	}
+
+	// menggunakan substring untuk menghapus semua strings yg ter-tera
+	idStr := r.URL.Path[len("/api/v1/todos/detail/"):]
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		write(w, "error", http.StatusBadRequest, nil, "Invalid ID")
+		return
+	}
+
+	for _, todo := range todos {
+		if todo.ID == id {
+			write(w, "success", http.StatusOK, todo, "Todo retrieved successfully")
+			return
+		}
+	}
+	
+	write(w, "error", http.StatusNotFound, nil, "Todo not found")
 }
 
 func GetAllTodo(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		todoMux.Lock()
-		res, _ := json.Marshal(todos)
-		todoMux.Unlock()
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(res)
-	} else {
-		write(w, "error", http.StatusMethodNotAllowed, "", "Method not allowed")
+	
+	if r.Method != http.MethodGet {
+		write(w, "error", http.StatusMethodNotAllowed, nil, "Method not allowed")
+		return
 	}
+
+	write(w, "success", http.StatusOK, todos, "List todo retrieved successfully", )
 }
